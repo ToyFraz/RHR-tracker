@@ -1,0 +1,61 @@
+{
+    "author": "ToyFraz",
+    "dependencies": {},
+    "keywords": [],
+    "name": "rhr-tracker",
+    "pebble": {
+        "capabilities": [
+            "health"
+        ],
+        "displayName": "RHR Tracker",
+        "enableMultiJS": true,
+        "messageKeys": [],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/RHR_ICON",
+                    "name": "RHR_ICON",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
+                    "type": "png-trans"
+                },
+                {
+                    "file": "images/HR_ZZZ",
+                    "name": "HR_ZZZ",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/N_ICON_3",
+                    "name": "N_ICON_3",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/heart_icon",
+                    "menuIcon": true,
+                    "name": "heart_icon",
+                    "targetPlatforms": [
+                        "emery"
+                    ],
+                    "type": "bitmap"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "emery"
+        ],
+        "uuid": "09d0e9d9-1500-43aa-a8a1-c499ca811bea",
+        "watchapp": {
+            "watchface": false
+        }
+    },
+    "version": "1.51.0"
+}
