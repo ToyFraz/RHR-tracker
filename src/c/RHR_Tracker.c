@@ -7,11 +7,12 @@
 #define HR_MAX_VALID 110
 #define GRAPH_SPREAD 35
 #define NEUTRAL_HR 55 
+#define NUM_RECORDS (4 * 60) // 4 hours of minute data
 
 typedef struct {
   uint8_t weekly_averages[MAX_WEEKS];
   time_t current_week_start;
-  uint16_t current_week_total_hr;
+  uint32_t current_week_total_hr; // Suggestion 3: Changed to uint32_t for safety
   uint8_t current_week_days_counted;
   time_t last_recorded_day;
   uint8_t daily_history[MAX_DAYS];
@@ -26,46 +27,44 @@ static TextLayer *s_hr_text_layer;
 static TextLayer *s_label_text_layer;
 static Layer *s_graph_layer;
 
-// Helper to get average RHR for a specific 24-hour window (00:00 to 04:00)
+// Suggestion 5: Refactored to use stack allocation instead of malloc
 static uint8_t get_rhr_for_date(time_t day_start) {
   time_t start = day_start;
   time_t end = day_start + (4 * SECONDS_PER_HOUR);
-  uint32_t num_records = 4 * 60;
-  HealthMinuteData *minute_data = (HealthMinuteData*)malloc(num_records * sizeof(HealthMinuteData));
+  
+  HealthMinuteData minute_data[NUM_RECORDS]; 
+  
+  uint32_t returned = health_service_get_minute_history(minute_data, NUM_RECORDS, &start, &end);
   
   uint8_t result = NEUTRAL_HR;
-  if (minute_data) {
-    uint32_t returned = health_service_get_minute_history(minute_data, num_records, &start, &end);
-    int total = 0;
-    int count = 0;
-    for (uint32_t i = 0; i < returned; i++) {
-      if (!minute_data[i].is_invalid && minute_data[i].heart_rate_bpm >= HR_MIN_VALID && minute_data[i].heart_rate_bpm <= HR_MAX_VALID) {
-        total += minute_data[i].heart_rate_bpm;
-        count++;
-      }
+  int total = 0;
+  int count = 0;
+
+  for (uint32_t i = 0; i < returned; i++) {
+    if (!minute_data[i].is_invalid && 
+        minute_data[i].heart_rate_bpm >= HR_MIN_VALID && 
+        minute_data[i].heart_rate_bpm <= HR_MAX_VALID) {
+      total += minute_data[i].heart_rate_bpm;
+      count++;
     }
-    if (count > 0) result = total / count;
-    free(minute_data);
   }
+  
+  if (count > 0) {
+    result = total / count;
+  }
+  
   return result;
 }
 
-// Scans only the available 7 days of watch history
 static void backfill_historical_data() {
   time_t today = time_start_of_today();
-  
-  // Fill as much of the 14-day history as possible (usually 7 days available)
   for (int i = 0; i < 7; i++) {
     time_t day_to_check = today - (i * SECONDS_PER_DAY);
     s_app_state.daily_history[i] = get_rhr_for_date(day_to_check);
   }
-  
-  // Fill the rest with neutral
   for (int i = 7; i < MAX_DAYS; i++) {
     s_app_state.daily_history[i] = NEUTRAL_HR;
   }
-
-  // Pre-fill the rest of the weekly graph with neutral
   for (int w = 0; w < MAX_WEEKS; w++) {
     s_app_state.weekly_averages[w] = NEUTRAL_HR;
   }
@@ -211,8 +210,17 @@ static void main_window_unload(Window *window) {
 
 static void init() {
   load_health_data();
-  calculate_last_night_hr();
-  update_history();
+
+  // Get the current time to check the actual hour
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+
+  // Only calculate and update history if it is 4:00 AM or later
+  if (t->tm_hour >= 4) {
+    calculate_last_night_hr();
+    update_history();
+  }
+
   s_main_window = window_create();
   window_set_window_handlers(s_main_window, (WindowHandlers) {.load = main_window_load, .unload = main_window_unload});
   window_set_click_config_provider(s_main_window, click_config_provider);
